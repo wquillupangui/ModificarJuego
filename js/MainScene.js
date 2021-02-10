@@ -28,56 +28,70 @@ class MainScene extends Phaser.Scene {
     );
     this.bgSky.fixedToCamera = true;
     //necesitamos un player
-    this.player = new Player(this, 50, 100);
-    var map = this.make.tilemap({ key: "map" });
-    var tiles = map.addTilesetImage("Plataformas", "tiles");
-
-    var layerFondo = map.createLayer("Fondo", tiles, 0, 0);
-    var layerSuelo = map.createLayer("Suelo", tiles, 0, 0);
+    this.player = new Player(this, playerXInit, playerYInit);
+    const map = this.make.tilemap({ key: "map" });
+    const tiles = map.addTilesetImage("Plataformas", "tiles");
+    const layerBack = map.createLayer("Fondo", tiles, 0, 0);
+    const layerLand = map.createLayer("Suelo", tiles, 0, 0);
     //enable collisions for every tile
-
-    layerSuelo.setCollisionByExclusion(-1, true);
-    this.physics.add.collider(this.player, layerSuelo);
+    layerLand.setCollisionByExclusion(-1, true);
+    this.physics.add.collider(this.player, layerLand);
 
     this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
     this.cameras.main.startFollow(this.player);
     this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels);
 
-    this.objetos = map.getObjectLayer("objetos")["objects"];
+    this.objects = map.getObjectLayer("objetos")["objects"];
     this.loadObjects();
     this.score = 1;
-    this.scoreText = this.add.text(16, 16, "PUNTOS: " + this.score, {
-      fontSize: "20px",
-      fill: "#000",
-      fontFamily: "verdana, arial, sans-serif",
-    });
+    this.scoreText = this.add.text(
+      16,
+      16,
+      "PUNTOS: " + this.score,
+      scoreTextStyle
+    );
   }
 
-  spriteHit(sprite1, sprite2) {
-    this.score++;
+  spriteHit(sprite1) {
+    this.score += sprite1.points;
     this.scoreText.text = "PUNTOS: " + this.score;
     sprite1.destroy();
   }
 
   update(time, delta) {
     this.player.update(time, delta);
-    //console.log(this.player);
-    if (this.player.x > 1300 || this.player.y > 600) {
-      this.player.x = 50;
-      this.player.y = 100;
+    if (this.player.x < -50 || this.player.x > 1300 || this.player.y > 600) {
+      this.restartPlayerPosition();
       this.loadObjects();
-      this.score = 1;
-      this.scoreText.text = "PUNTOS: " + this.score;
+      this.restartScore();
     }
+    this.moveScoreText();
+  }
+
+  restartPlayerPosition() {
+    this.player.x = playerXInit;
+    this.player.y = playerYInit;
+  }
+
+  restartScore() {
+    this.score = 1;
+    this.scoreText.text = "PUNTOS: " + this.score;
+  }
+
+  moveScoreText() {
     this.scoreText.x = this.cameras.main.scrollX + 16;
   }
 
   loadObjects() {
-    this.objetos.map((obj) => {
-      if (obj.gid == 115) {
+    this.objects.map((obj) => {
+      if (obj.gid === 115) {
         // en mi caso la seta
-        var seta = new Seta(this, obj.x, obj.y);
-        //this.setas.push(seta);
+        const points = obj.properties.filter(
+          (prop) => prop.name === "puntos"
+        )[0]
+          ? obj.properties.filter((prop) => prop.name === "puntos")[0].value
+          : 0;
+        const seta = new Seta(this, obj.x, obj.y, points);
         this.physics.add.overlap(seta, this.player, this.spriteHit, null, this);
         return obj;
       }
